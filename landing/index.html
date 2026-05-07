@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ster-AI — Automatisation par IA</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; color: #111; background: #fff; }
+
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 48px;
+      border-bottom: 0.5px solid #e8e8e8;
+      position: sticky;
+      top: 0;
+      background: #fff;
+      z-index: 100;
+    }
+
+    .nav-logo { font-size: 15px; font-weight: 500; letter-spacing: -0.3px; }
+    .nav-links { display: flex; gap: 28px; align-items: center; }
+    .nav-links a { font-size: 13px; color: #666; text-decoration: none; }
+    .nav-links a:hover { color: #111; }
+
+    .btn-nav {
+      font-size: 13px;
+      padding: 8px 18px;
+      border-radius: 8px;
+      border: 2px solid #3D4AB8;
+      background: #5E6AD2;
+      color: #ffffff !important;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      text-decoration: none !important;
+    }
+
+    .btn-nav-mobile { display: none; }
+
+    .hero {
+      padding: 96px 48px 88px;
+      text-align: center;
+      max-width: 760px;
+      margin: 0 auto;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 500;
+      color: #5E6AD2;
+      background: #EEEDFE;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 28px;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+
+    .hero h1 {
+      font-size: 48px;
+      font-weight: 500;
+      line-height: 1.12;
+      letter-spacing: -1.5px;
+      color: #111;
+      margin-bottom: 22px;
+    }
+
+    .hero h1 span { color: #5E6AD2; }
+
+    .hero p {
+      font-size: 17px;
+      color: #666;
+      line-height: 1.65;
+      margin-bottom: 40px;
+      max-width: 540px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .hero-btns {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .btn-primary {
+      font-size: 14px;
+      padding: 11px 26px;
+      border-radius: 8px;
+      border: 2px solid #3D4AB8;
+      background: #5E6AD2;
+      color: #ffffff !important;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      text-decoration: none !important;
+    }
+
+    .btn-secondary {
+      font-size: 14px;
+      padding: 11px 26px;
+      border-radius: 8px;
+      border: 0.5px solid #ccc;
+      background: transparent;
+      color: #111 !important;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      text-decoration: none !important;
+    }
+
+    .divider { height: 0.5px; background: #e8e8e8; margin: 0 48px; }
+
+    .section { padding: 72px 48px; max-width: 1100px; margin: 0 auto; }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: #5E6AD2;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .section h2 {
+      font-size: 32px;
+      font-weight: 500;
+      letter-spacing: -0.8px;
+      margin-bottom: 12px;
+    }
+
+    .section > p {
+      font-size: 15px;
+      color: #666;
+      line-height: 1.65;
+      max-width: 520px;
+      margin-bottom: 40px;
+    }
+
+    .cases {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    .case {
+      background: #f7f7f7;
+      border: 0.5px solid #e8e8e8;
+      border-radius: 12px;
+      padding: 28px;
+    }
+
+    .case-tag {
+      font-size: 10px;
+      font-weight: 500;
+      color: #5E6AD2;
+      background: #EEEDFE;
+      padding: 3px 10px;
+      border-radius: 20px;
+      display: inline-block;
+      margin-bottom: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .case h3 { font-size: 16px; font-weight: 500; margin-bottom: 10px; color: #111; }
+    .case p { font-size: 13px; color: #666; line-height: 1.65; }
+
+    .case-highlight { border: 0.5px solid #5E6AD2; background: #EEEDFE; }
+    .case-highlight .case-tag { background: #5E6AD2; color: #fff; }
+    .case-highlight h3 { color: #3C3489; }
+    .case-highlight p { color: #534AB7; }
+
+    .plans {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-top: 40px;
+    }
+
+    .plan {
+      background: #f7f7f7;
+      border: 0.5px solid #e8e8e8;
+      border-radius: 12px;
+      padding: 28px;
+    }
+
+    .plan.featured { border: 1.5px solid #5E6AD2; background: #fff; }
+
+    .plan-badge {
+      font-size: 10px;
+      font-weight: 500;
+      background: #5E6AD2;
+      color: #fff;
+      padding: 3px 10px;
+      border-radius: 20px;
+      display: inline-block;
+      margin-bottom: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .plan h3 { font-size: 16px; font-weight: 500; margin-bottom: 10px; color: #111; }
+    .plan p { font-size: 13px; color: #666; line-height: 1.8; }
+
+    .plan-features {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 0.5px solid #e8e8e8;
+      font-size: 12px;
+      color: #999;
+      line-height: 2;
+    }
+
+    .cta-section {
+      background: #f7f7f7;
+      border-radius: 16px;
+      padding: 72px 48px;
+      text-align: center;
+      margin: 0 48px 80px;
+    }
+
+    .cta-section h2 {
+      font-size: 32px;
+      font-weight: 500;
+      letter-spacing: -0.8px;
+      margin-bottom: 14px;
+    }
+
+    .cta-section p { font-size: 16px; color: #666; margin-bottom: 32px; }
+
+    footer {
+      padding: 24px 48px;
+      border-top: 0.5px solid #e8e8e8;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .footer-logo { font-size: 13px; font-weight: 500; }
+    .footer-right { display: flex; gap: 24px; align-items: center; }
+    .footer-email { font-size: 12px; color: #5E6AD2; text-decoration: none; }
+    .footer-copy { font-size: 12px; color: #999; }
+
+    /* ===== MOBILE UNIQUEMENT ===== */
+    @media (max-width: 640px) {
+
+      nav {
+        padding: 14px 20px;
+      }
+
+      .nav-links { display: none; }
+
+      .btn-nav-mobile {
+        display: inline-block;
+        font-size: 12px;
+        padding: 7px 14px;
+        border-radius: 8px;
+        border: none;
+        background: #5E6AD2;
+        color: #ffffff !important;
+        font-family: 'Inter', sans-serif;
+        font-weight: 600;
+        text-decoration: none !important;
+      }
+
+      .hero {
+        padding: 48px 20px;
+      }
+
+      .hero h1 { font-size: 30px; letter-spacing: -0.8px; }
+      .hero p { font-size: 15px; }
+
+      .hero-btns {
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .btn-primary, .btn-secondary {
+        text-align: center;
+        width: 100%;
+        padding: 13px 20px;
+      }
+
+      .divider { margin: 0 20px; }
+
+      .section { padding: 40px 20px; }
+      .section h2 { font-size: 24px; }
+
+      .cases { grid-template-columns: 1fr; }
+      .plans { grid-template-columns: 1fr; }
+
+      .cta-section {
+        margin: 0 20px 48px;
+        padding: 40px 20px;
+      }
+
+      .cta-section h2 { font-size: 24px; }
+
+      footer {
+        padding: 20px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <div class="nav-logo">Ster-AI</div>
+    <div class="nav-links">
+      <a href="#cas-usage">Cas d'usage</a>
+      <a href="#offres">Offres</a>
+      <a href="#contact">Contact</a>
+      <a class="btn-nav" href="mailto:contact@ster-ai.com">Demander une démo →</a>
+    </div>
+    <a class="btn-nav-mobile" href="mailto:contact@ster-ai.com">Démo →</a>
+  </nav>
+
+  <div class="hero">
+    <div class="hero-badge">Propulsé par l'IA</div>
+    <h1>Libérez vos équipes des<br><span>tâches répétitives</span></h1>
+    <p>Ster-AI automatise vos processus documentaires grâce à l'intelligence artificielle — pour que vos collaborateurs se concentrent sur ce qui fait vraiment grandir votre entreprise.</p>
+    <div class="hero-btns">
+      <a class="btn-primary" href="mailto:contact@ster-ai.com">Demander une démo</a>
+      <a class="btn-secondary" href="#cas-usage">Voir les cas d'usage</a>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="section" id="cas-usage">
+    <div class="section-label">Cas d'usage</div>
+    <h2>Pour tous les secteurs</h2>
+    <p>Ster-AI s'adapte à n'importe quel processus documentaire répétitif dans votre organisation.</p>
+    <div class="cases">
+      <div class="case case-highlight">
+        <div class="case-tag">Déjà en production</div>
+        <h3>Fédérations sportives</h3>
+        <p>Analyse automatique des rapports arbitres et délégués chaque semaine. Classification en priorités, envoi du récap aux responsables.</p>
+      </div>
+      <div class="case">
+        <div class="case-tag">Ressources humaines</div>
+        <h3>Traitement des candidatures</h3>
+        <p>Lecture et tri automatique des CVs selon vos critères. Synthèse envoyée au recruteur avec les profils à prioriser.</p>
+      </div>
+      <div class="case">
+        <div class="case-tag">Juridique</div>
+        <h3>Analyse de contrats</h3>
+        <p>Détection automatique des clauses sensibles, comparaison entre versions, alerte en cas d'anomalie.</p>
+      </div>
+      <div class="case">
+        <div class="case-tag">Finance</div>
+        <h3>Rapports financiers</h3>
+        <p>Consolidation et analyse de vos rapports périodiques. Synthèse automatique pour vos réunions de direction.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="section" id="offres">
+    <div class="section-label">Offres</div>
+    <h2>Une formule pour chaque besoin</h2>
+    <p>Contactez-nous pour obtenir un devis personnalisé adapté à votre organisation.</p>
+    <div class="plans">
+      <div class="plan">
+        <h3>Découverte</h3>
+        <p>Pour tester Ster-AI sur un premier cas d'usage et mesurer l'impact concret dans votre organisation.</p>
+        <div class="plan-features">1 module<br>Support email<br>Mises à jour incluses</div>
+      </div>
+      <div class="plan featured">
+        <div class="plan-badge">Populaire</div>
+        <h3>Annuel</h3>
+        <p>L'offre idéale pour les organisations qui souhaitent automatiser plusieurs processus sur la durée.</p>
+        <div class="plan-features">Jusqu'à 3 modules<br>Support prioritaire<br>Mises à jour incluses</div>
+      </div>
+      <div class="plan">
+        <h3>Triennal</h3>
+        <p>Pour les organisations qui veulent s'engager sur le long terme et maximiser leur retour sur investissement.</p>
+        <div class="plan-features">Modules illimités<br>Support dédié<br>Mises à jour incluses</div>
+      </div>
+      <div class="plan">
+        <h3>Partenariat</h3>
+        <p>Pour les revendeurs et intégrateurs qui souhaitent proposer Ster-AI à leurs propres clients.</p>
+        <div class="plan-features">Accès API<br>Co-branding possible<br>Support dédié</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="cta-section" id="contact">
+    <h2>Prêt à libérer vos équipes ?</h2>
+    <p>Contactez-nous pour une démo personnalisée sur votre cas d'usage.</p>
+    <a class="btn-primary" href="mailto:contact@ster-ai.com">Demander une démo →</a>
+  </div>
+
+  <footer>
+    <div class="footer-logo">Ster-AI</div>
+    <div class="footer-right">
+      <a class="footer-email" href="mailto:contact@ster-ai.com">contact@ster-ai.com</a>
+      <div class="footer-copy">© 2026 Ster-AI</div>
+    </div>
+  </footer>
+
+</body>
+</html>
