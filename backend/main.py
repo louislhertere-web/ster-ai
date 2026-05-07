@@ -5,6 +5,7 @@ import os
 import json
 import re
 import smtplib
+import base64
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
@@ -26,7 +27,7 @@ app = FastAPI(title="Ster-AI API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -41,7 +42,13 @@ GMAIL_ADDRESS = os.getenv("GMAIL_ADDRESS")
 GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")
 
 def get_drive_service():
-    creds = service_account.Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
+    creds_b64 = os.getenv("GOOGLE_CREDENTIALS_BASE64")
+    if creds_b64:
+        creds_json = base64.b64decode(creds_b64).decode('utf-8')
+        creds_dict = json.loads(creds_json)
+        creds = service_account.Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
+    else:
+        creds = service_account.Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
     return build('drive', 'v3', credentials=creds)
 
 def lire_pdf(service, file_id):
@@ -98,7 +105,6 @@ def envoyer_email(destinataire, resultats):
     jaune = [r for r in resultats if r['priorite'] == 'jaune']
     vert = [r for r in resultats if r['priorite'] == 'vert']
 
-    # Génération du fichier Word
     doc = Document()
     doc.add_heading('Ster-AI — Récapitulatif hebdomadaire', 0)
     doc.add_paragraph(f'Analyse automatique des rapports arbitres et délégués — {date.today().strftime("%d/%m/%Y")}')
@@ -132,7 +138,6 @@ def envoyer_email(destinataire, resultats):
     doc.save(tmp.name)
     tmp.close()
 
-    # Email HTML
     html = f"""
     <html><body style="font-family: Arial; padding: 20px;">
     <h1 style="color: #1a1a2e;">Ster-AI — Récapitulatif hebdomadaire</h1>
@@ -168,7 +173,6 @@ def envoyer_email(destinataire, resultats):
     msg['To'] = destinataire
     msg.attach(MIMEText(html, 'html'))
 
-    # Pièce jointe Word
     with open(tmp.name, 'rb') as f:
         part = MIMEBase('application', 'octet-stream')
         part.set_payload(f.read())
