@@ -384,7 +384,7 @@ function Dashboard({ utilisateur, onLogout }) {
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
-    fetch('http://127.0.0.1:8000/drive/analyser-tout')
+    fetch('https://ster-ai-production.up.railway.app/drive/analyser-tout')
       .then(res => res.json())
       .then(data => {
         if (data.error) setErreur(data.error);
@@ -404,7 +404,7 @@ function Dashboard({ utilisateur, onLogout }) {
 
   const envoyerRecap = () => {
     setEnvoi(true);
-    fetch(`http://127.0.0.1:8000/envoyer-recap?destinataire=louislhertere@gmail.com`)
+    fetch(`https://ster-ai-production.up.railway.app/envoyer-recap?destinataire=louislhertere@gmail.com`)
       .then(res => res.json())
       .then(() => { showToast('Récap envoyé par email ✓'); setEnvoi(false); })
       .catch(() => { showToast("Erreur lors de l'envoi"); setEnvoi(false); });
