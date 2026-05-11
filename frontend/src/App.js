@@ -189,6 +189,53 @@ const STYLES = `
   .btn-recap:hover { opacity: 0.85; }
   .btn-recap:disabled { opacity: 0.5; cursor: not-allowed; }
 
+  .selector-bar {
+    display: flex;
+    padding: 10px 24px;
+    border-bottom: 1px solid #e8e8e8;
+    background: #fff;
+    gap: 10px;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .selector-label {
+    font-size: 11px;
+    color: #999;
+    font-weight: 500;
+  }
+
+  .select-input {
+    font-size: 12px;
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid #e8e8e8;
+    background: #fff;
+    color: #111;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    outline: none;
+  }
+
+  .select-input:focus { border-color: #5E6AD2; }
+
+  .btn-analyser {
+    font-size: 12px;
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid #e8e8e8;
+    background: #f7f7f7;
+    color: #111;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    transition: all 0.1s;
+    margin-left: auto;
+  }
+
+  .btn-analyser:hover { background: #eee; }
+  .btn-analyser:disabled { opacity: 0.5; cursor: not-allowed; }
+
   .stats-bar {
     display: flex;
     padding: 14px 24px;
@@ -379,14 +426,40 @@ const STYLES = `
 
 function Dashboard({ utilisateur, onLogout }) {
   const [resultats, setResultats] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [filtre, setFiltre] = useState("tous");
   const [erreur, setErreur] = useState(null);
   const [envoi, setEnvoi] = useState(false);
   const [toast, setToast] = useState(null);
+  const [structure, setStructure] = useState({});
+  const [competition, setCompetition] = useState('');
+  const [journee, setJournee] = useState('');
 
   useEffect(() => {
-    fetch('https://ster-ai-production.up.railway.app/drive/analyser-tout')
+    fetch('https://ster-ai-production.up.railway.app/drive/structure')
+      .then(res => res.json())
+      .then(data => {
+        if (data.structure) setStructure(data.structure);
+      })
+      .catch(() => {});
+  }, []);
+
+  const journeesDisponibles = competition && structure[competition]
+    ? Object.keys(structure[competition].journees).sort((a, b) => {
+        const na = parseInt(a.replace(/\D/g, '')) || 0;
+        const nb = parseInt(b.replace(/\D/g, '')) || 0;
+        return na - nb;
+      })
+    : [];
+
+  const lancerAnalyse = () => {
+    setLoading(true);
+    setErreur(null);
+    setResultats([]);
+    const params = competition && journee
+      ? `?competition=${competition}&journee=${encodeURIComponent(journee)}`
+      : '';
+    fetch(`https://ster-ai-production.up.railway.app/drive/analyser-tout${params}`)
       .then(res => res.json())
       .then(data => {
         if (data.error) setErreur(data.error);
@@ -397,7 +470,7 @@ function Dashboard({ utilisateur, onLogout }) {
         setErreur("Impossible de contacter le backend");
         setLoading(false);
       });
-  }, []);
+  };
 
   const showToast = (msg) => {
     setToast(msg);
@@ -411,7 +484,9 @@ function Dashboard({ utilisateur, onLogout }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         destinataire: 'louislhertere@gmail.com',
-        resultats: resultats
+        resultats: resultats,
+        competition: competition || null,
+        journee: journee || null
       })
     })
       .then(res => res.json())
@@ -429,11 +504,9 @@ function Dashboard({ utilisateur, onLogout }) {
     ? utilisateur.nom.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
     : 'U';
 
-  const getWeekNumber = () => {
-    const now = new Date();
-    const start = new Date(now.getFullYear(), 0, 1);
-    return Math.ceil(((now - start) / 86400000 + start.getDay() + 1) / 7);
-  };
+  const titreAnalyse = competition && journee
+    ? `${competition} - ${journee}`
+    : 'Tous les rapports';
 
   return (
     <>
@@ -449,31 +522,37 @@ function Dashboard({ utilisateur, onLogout }) {
             <div className="sidebar-label">Vue</div>
             <div className={`nav-item ${filtre === 'tous' ? 'active' : ''}`} onClick={() => setFiltre('tous')}>
               <span>Tous les rapports</span>
-              {!loading && <span className="nav-count">{resultats.length}</span>}
+              {resultats.length > 0 && <span className="nav-count">{resultats.length}</span>}
             </div>
             <div className={`nav-item ${filtre === 'rouge' ? 'active' : ''}`} onClick={() => setFiltre('rouge')}>
               <span>Prioritaires</span>
-              {!loading && nbRouge > 0 && <span className="nav-count nav-count-red">{nbRouge}</span>}
+              {nbRouge > 0 && <span className="nav-count nav-count-red">{nbRouge}</span>}
             </div>
             <div className={`nav-item ${filtre === 'jaune' ? 'active' : ''}`} onClick={() => setFiltre('jaune')}>
               <span>A verifier</span>
-              {!loading && <span className="nav-count">{nbJaune}</span>}
+              {nbJaune > 0 && <span className="nav-count">{nbJaune}</span>}
             </div>
             <div className={`nav-item ${filtre === 'vert' ? 'active' : ''}`} onClick={() => setFiltre('vert')}>
               <span>RAS</span>
-              {!loading && <span className="nav-count">{nbVert}</span>}
+              {nbVert > 0 && <span className="nav-count">{nbVert}</span>}
             </div>
             <div className={`nav-item ${filtre === 'gris' ? 'active' : ''}`} onClick={() => setFiltre('gris')}>
               <span>Rapport manquant</span>
-              {!loading && <span className="nav-count">{nbGris}</span>}
+              {nbGris > 0 && <span className="nav-count">{nbGris}</span>}
             </div>
           </div>
 
           <div className="sidebar-section" style={{ marginTop: '8px' }}>
             <div className="sidebar-label">Competitions</div>
-            <div className="nav-item">National 1</div>
-            <div className="nav-item">National 2</div>
-            <div className="nav-item">National 3</div>
+            {['N1', 'N2', 'N3'].map(c => (
+              <div
+                key={c}
+                className={`nav-item ${competition === c ? 'active' : ''}`}
+                onClick={() => { setCompetition(c); setJournee(''); setResultats([]); }}
+              >
+                National {c.replace('N', '')}
+              </div>
+            ))}
           </div>
 
           <div className="sidebar-bottom">
@@ -489,7 +568,7 @@ function Dashboard({ utilisateur, onLogout }) {
 
         <div className="content">
           <div className="topbar">
-            <div className="page-title">Rapports - Semaine {getWeekNumber()}</div>
+            <div className="page-title">{titreAnalyse}</div>
             <div className="filter-pills">
               {['tous', 'rouge', 'jaune', 'vert', 'gris'].map(f => (
                 <button
@@ -501,12 +580,28 @@ function Dashboard({ utilisateur, onLogout }) {
                 </button>
               ))}
             </div>
-            <button className="btn-recap" onClick={envoyerRecap} disabled={envoi || loading}>
+            <button className="btn-recap" onClick={envoyerRecap} disabled={envoi || loading || resultats.length === 0}>
               {envoi ? 'Envoi...' : 'Envoyer recap'}
             </button>
           </div>
 
-          {!loading && !erreur && (
+          <div className="selector-bar">
+            <span className="selector-label">Competition</span>
+            <select className="select-input" value={competition} onChange={e => { setCompetition(e.target.value); setJournee(''); setResultats([]); }}>
+              <option value="">Toutes</option>
+              {['N1', 'N2', 'N3'].map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <span className="selector-label">Journee</span>
+            <select className="select-input" value={journee} onChange={e => { setJournee(e.target.value); setResultats([]); }} disabled={!competition}>
+              <option value="">Toutes</option>
+              {journeesDisponibles.map(j => <option key={j} value={j}>{j}</option>)}
+            </select>
+            <button className="btn-analyser" onClick={lancerAnalyse} disabled={loading}>
+              {loading ? 'Analyse en cours...' : 'Lancer l\'analyse'}
+            </button>
+          </div>
+
+          {resultats.length > 0 && !erreur && (
             <div className="stats-bar">
               <div className="stat-item" onClick={() => setFiltre('rouge')}>
                 <div className="stat-dot" style={{ background: '#EF4444' }} />
@@ -560,7 +655,14 @@ function Dashboard({ utilisateur, onLogout }) {
               </div>
             )}
 
-            {!loading && !erreur && (
+            {!loading && !erreur && resultats.length === 0 && (
+              <div className="state-box">
+                <div className="state-title">Selectionnez une competition et une journee</div>
+                <div className="state-sub">puis cliquez sur "Lancer l'analyse"</div>
+              </div>
+            )}
+
+            {!loading && !erreur && resultats.length > 0 && (
               <>
                 <div className="list-header">
                   <span>Match</span>

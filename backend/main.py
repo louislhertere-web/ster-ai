@@ -13,7 +13,7 @@ import io
 from googleapiclient.http import MediaIoBaseDownload
 import PyPDF2
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 from docx import Document
 import tempfile
 from datetime import date
@@ -32,10 +32,12 @@ app.add_middleware(
 
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
-SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
+SCOPES = ['https://www.googleapis.com/auth/drive']
 CREDENTIALS_FILE = os.path.join(os.path.dirname(__file__), 'credentials.json')
 FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID")
 RESEND_API_KEY = os.getenv("RESEND_API_KEY")
+
+COMPETITIONS = ["N1", "N2", "N3"]
 
 def get_drive_service():
     creds_b64 = os.getenv("GOOGLE_CREDENTIALS_BASE64")
@@ -46,6 +48,31 @@ def get_drive_service():
     else:
         creds = service_account.Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
     return build('drive', 'v3', credentials=creds)
+
+def get_or_create_folder(service, nom, parent_id):
+    query = f"name='{nom}' and '{parent_id}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false"
+    results = service.files().list(q=query, fields="files(id, name)").execute()
+    fichiers = results.get('files', [])
+    if fichiers:
+        return fichiers[0]['id']
+    metadata = {
+        'name': nom,
+        'mimeType': 'application/vnd.google-apps.folder',
+        'parents': [parent_id]
+    }
+    folder = service.files().create(body=metadata, fields='id').execute()
+    return folder['id']
+
+def get_structure(service):
+    structure = {}
+    for comp in COMPETITIONS:
+        comp_id = get_or_create_folder(service, comp, FOLDER_ID)
+        structure[comp] = {'id': comp_id, 'journees': {}}
+        query = f"'{comp_id}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false"
+        results = service.files().list(q=query, fields="files(id, name)").execute()
+        for folder in results.get('files', []):
+            structure[comp]['journees'][folder['name']] = folder['id']
+    return structure
 
 def lire_pdf(service, file_id):
     request = service.files().get_media(fileId=file_id)
@@ -68,7 +95,6 @@ Si tu ne trouves pas, reponds "Match inconnu".
 
 RAPPORT :
 {texte_pdf[:1000]}"""
-
     message = client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=50,
@@ -77,7 +103,6 @@ RAPPORT :
     return message.content[0].text.strip()
 
 def analyser_paire(id_match, rapport_arbitre, rapport_delegue):
-
     arbitre_manquant = rapport_arbitre == "Rapport arbitre non disponible"
     delegue_manquant = rapport_delegue == "Rapport delegue non disponible"
 
@@ -148,15 +173,17 @@ Reponds UNIQUEMENT en JSON avec ce format exact :
     json_match = re.search(r'\{.*\}', texte, re.DOTALL)
     return json.loads(json_match.group())
 
-def envoyer_email(destinataire, resultats):
+def envoyer_email(destinataire, resultats, competition=None, journee=None):
     rouge = [r for r in resultats if r['priorite'] == 'rouge']
     jaune = [r for r in resultats if r['priorite'] == 'jaune']
     vert = [r for r in resultats if r['priorite'] == 'vert']
     gris = [r for r in resultats if r['priorite'] == 'gris']
 
+    contexte = f"{competition} - {journee}" if competition and journee else date.today().strftime("%d/%m/%Y")
+
     doc = Document()
     doc.add_heading('Ster-AI - Recapitulatif hebdomadaire', 0)
-    doc.add_paragraph(f'Analyse automatique des rapports arbitres et delegues - {date.today().strftime("%d/%m/%Y")}')
+    doc.add_paragraph(f'Analyse automatique des rapports arbitres et delegues - {contexte}')
     doc.add_paragraph(f'Total : {len(rouge)} prioritaire(s) | {len(jaune)} a verifier | {len(vert)} RAS | {len(gris)} rapport(s) manquant(s)')
     doc.add_paragraph('')
 
@@ -197,12 +224,11 @@ def envoyer_email(destinataire, resultats):
 
     with open(tmp.name, 'rb') as f:
         docx_b64 = base64.b64encode(f.read()).decode('utf-8')
-
     os.remove(tmp.name)
 
     html = f"""
     <html><body style="font-family: Arial; padding: 20px;">
-    <h1 style="color: #1a1a2e;">Ster-AI - Recapitulatif hebdomadaire</h1>
+    <h1 style="color: #1a1a2e;">Ster-AI - Recapitulatif {contexte}</h1>
     <p>Bonjour,</p>
     <p>Veuillez trouver ci-dessous le recapitulatif automatique de la journee du {date.today().strftime("%d/%m/%Y")}.</p>
     <p>Bien a vous,</p>
@@ -234,7 +260,7 @@ def envoyer_email(destinataire, resultats):
     payload = {
         "from": "Ster-AI <onboarding@resend.dev>",
         "to": [destinataire],
-        "subject": f"Ster-AI - {len(rouge)} prioritaire(s), {len(jaune)} a verifier, {len(gris)} manquant(s), {len(vert)} RAS",
+        "subject": f"Ster-AI - {contexte} - {len(rouge)} prioritaire(s), {len(jaune)} a verifier, {len(gris)} manquant(s), {len(vert)} RAS",
         "html": html,
         "attachments": [
             {
@@ -264,6 +290,8 @@ class RapportRequest(BaseModel):
 class RecapRequest(BaseModel):
     destinataire: str
     resultats: List[dict]
+    competition: Optional[str] = None
+    journee: Optional[str] = None
 
 @app.get("/")
 def read_root():
@@ -273,25 +301,32 @@ def read_root():
 def health_check():
     return {"status": "healthy"}
 
-@app.get("/drive/rapports")
-def lister_rapports():
+@app.get("/drive/structure")
+def get_drive_structure():
     try:
         service = get_drive_service()
-        results = service.files().list(
-            q=f"'{FOLDER_ID}' in parents and mimeType='application/pdf'",
-            fields="files(id, name, createdTime)"
-        ).execute()
-        fichiers = results.get('files', [])
-        return {"rapports": fichiers, "total": len(fichiers)}
+        structure = get_structure(service)
+        return {"structure": structure}
     except Exception as e:
         return {"error": str(e)}
 
 @app.get("/drive/analyser-tout")
-def analyser_tous_rapports():
+def analyser_tous_rapports(competition: Optional[str] = None, journee: Optional[str] = None):
     try:
         service = get_drive_service()
+
+        if competition and journee:
+            structure = get_structure(service)
+            if competition not in structure:
+                return {"error": f"Competition {competition} introuvable"}
+            if journee not in structure[competition]['journees']:
+                return {"error": f"Journee {journee} introuvable dans {competition}"}
+            folder_id = structure[competition]['journees'][journee]
+        else:
+            folder_id = FOLDER_ID
+
         results = service.files().list(
-            q=f"'{FOLDER_ID}' in parents and mimeType='application/pdf'",
+            q=f"'{folder_id}' in parents and mimeType='application/pdf' and trashed=false",
             fields="files(id, name, createdTime)",
             pageSize=100
         ).execute()
@@ -332,14 +367,14 @@ def analyser_tous_rapports():
             analyse['id'] = id_match
             resultats.append(analyse)
 
-        return {"resultats": resultats, "total": len(resultats)}
+        return {"resultats": resultats, "total": len(resultats), "competition": competition, "journee": journee}
     except Exception as e:
         return {"error": str(e)}
 
 @app.post("/envoyer-recap")
 def envoyer_recap(req: RecapRequest):
     try:
-        envoyer_email(req.destinataire, req.resultats)
+        envoyer_email(req.destinataire, req.resultats, req.competition, req.journee)
         return {"message": f"Email envoye a {req.destinataire}", "total": len(req.resultats)}
     except Exception as e:
         return {"error": str(e)}
