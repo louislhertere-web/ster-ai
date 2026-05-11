@@ -61,6 +61,21 @@ def lire_pdf(service, file_id):
         texte += page.extract_text()
     return texte
 
+def extraire_nom_match(texte_pdf):
+    prompt = f"""Extrait uniquement le nom du match depuis ce rapport de football, au format "Equipe A vs Equipe B".
+Reponds UNIQUEMENT avec le nom du match, rien d'autre.
+Si tu ne trouves pas, reponds "Match inconnu".
+
+RAPPORT :
+{texte_pdf[:1000]}"""
+
+    message = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=50,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return message.content[0].text.strip()
+
 def analyser_paire(id_match, rapport_arbitre, rapport_delegue):
 
     arbitre_manquant = rapport_arbitre == "Rapport arbitre non disponible"
@@ -68,8 +83,10 @@ def analyser_paire(id_match, rapport_arbitre, rapport_delegue):
 
     if arbitre_manquant or delegue_manquant:
         manquant = "arbitre" if arbitre_manquant else "delegue"
+        rapport_disponible = rapport_delegue if arbitre_manquant else rapport_arbitre
+        nom_match = extraire_nom_match(rapport_disponible)
         return {
-            "match": f"Match {id_match}",
+            "match": nom_match,
             "priorite": "gris",
             "motif": f"Rapport {manquant} non disponible",
             "action": f"Relancer l'officiel {manquant} pour obtenir son rapport"
@@ -101,15 +118,18 @@ ROUGE — A traiter en priorite. Utilise ROUGE uniquement si le rapport mentionn
 
 VERT — Aucune action requise. Utilise VERT dans tous ces cas :
 - Match sans incident notable
-- Avertissements (cartons jaunes) simples, meme en grand nombre, meme s'il y a une contradiction mineure entre les deux rapports sur le nombre ou l'identite des joueurs avertis
-- Expulsion par double avertissement (double carton jaune) : classe en VERT en precisant dans le motif "Expulsion par double avertissement de [NOM DU JOUEUR]"
+- Avertissements (cartons jaunes) simples, meme en grand nombre
+- Toute difference de libelle ou de formulation sur le motif d'un carton jaune entre les deux rapports : c'est toujours VERT, jamais une contradiction significative
+- Expulsion par double avertissement (double carton jaune) : VERT en precisant "Expulsion par double avertissement de [NOM DU JOUEUR]"
 - Expulsion pour faute grossiere sans violence caracterisee
-- Toute contradiction entre les deux rapports portant uniquement sur des cartons jaunes
+- Difference de nombre de cartons jaunes entre les deux rapports
+- Difference dans l'identite des joueurs avertis
 
-JAUNE — A verifier. Utilise JAUNE UNIQUEMENT dans ces cas :
-- Les deux rapports sont presents mais se contredisent sur un fait important autre que les cartons jaunes : score final, identite du joueur exclu pour faute grave, circonstances d'un incident serieux
+JAUNE — A verifier. Utilise JAUNE UNIQUEMENT dans ces deux cas strictement :
+- Les deux rapports se contredisent sur le score final du match
+- Les deux rapports se contredisent sur l'identite du joueur exclu directement (carton rouge direct, pas double jaune) pour faute grave ou violence
 
-Ne classe jamais en JAUNE pour une contradiction sur des cartons jaunes. Ne classe pas en JAUNE par precaution ou doute mineur.
+Toute autre situation doit etre classee VERT. En cas de doute, classe VERT.
 
 Reponds UNIQUEMENT en JSON avec ce format exact :
 {{
