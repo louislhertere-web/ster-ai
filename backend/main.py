@@ -86,13 +86,18 @@ ROUGE — A traiter en priorite. Utilise ROUGE uniquement si le rapport mentionn
 - Comportement violent d'un dirigeant ou educateur
 - Jet de projectiles
 
-VERT — Aucune action requise. Utilise VERT si le match s'est deroule sans incident notable, avec seulement des avertissements ou expulsions techniques (double avertissement, faute grossiere sans violence) correctement documentees dans les deux rapports, et sans contradiction entre les deux officiels.
+VERT — Aucune action requise. Utilise VERT dans tous ces cas :
+- Match sans incident notable
+- Avertissements (cartons jaunes) simples, meme en grand nombre, meme s'il y a une contradiction mineure entre les deux rapports sur le nombre ou l'identite des joueurs avertis
+- Expulsion par double avertissement (double carton jaune) : classe en VERT en precisantdans le motif "Expulsion par double avertissement de [NOM DU JOUEUR]"
+- Expulsion pour faute grossiere sans violence caracterisee
+- Toute contradiction entre les deux rapports portant uniquement sur des cartons jaunes
 
 JAUNE — A verifier. Utilise JAUNE UNIQUEMENT dans ces deux cas :
 - Un seul rapport est disponible (arbitre ou delegue manquant) et les informations sont insuffisantes pour conclure
-- Les deux rapports sont presents mais se contredisent sur un fait important (score, identite d'un joueur exclu, circonstances d'un incident)
+- Les deux rapports sont presents mais se contredisent sur un fait important autre que les cartons jaunes : score final, identite du joueur exclu pour faute grave, circonstances d'un incident serieux
 
-Si les faits sont clairs et documentes dans les deux rapports, classe en ROUGE ou VERT selon leur nature. Ne classe pas en JAUNE par precaution ou doute mineur.
+Ne classe jamais en JAUNE pour une contradiction sur des cartons jaunes. Ne classe pas en JAUNE par precaution ou doute mineur.
 
 Reponds UNIQUEMENT en JSON avec ce format exact :
 {{
@@ -242,7 +247,7 @@ def analyser_tous_rapports():
         results = service.files().list(
             q=f"'{FOLDER_ID}' in parents and mimeType='application/pdf'",
             fields="files(id, name, createdTime)",
-            pageSize=50
+            pageSize=100
         ).execute()
         fichiers = results.get('files', [])
 
@@ -260,7 +265,7 @@ def analyser_tous_rapports():
         tous_ids = set(arbitres.keys()) | set(delegues.keys())
         resultats = []
 
-        for id_match in list(tous_ids)[:10]:
+        for id_match in list(tous_ids)[:100]:
             rapport_arbitre = ""
             rapport_delegue = ""
             fichier_nom = f"Match {id_match}"
