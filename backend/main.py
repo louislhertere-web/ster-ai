@@ -178,7 +178,8 @@ def envoyer_email(destinataire, resultats):
         part.add_header('Content-Disposition', f'attachment; filename="Recap_SterAI_{date.today().strftime("%d%m%Y")}.docx"')
         msg.attach(part)
 
-    with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+    with smtplib.SMTP('smtp.gmail.com', 587) as server:
+        server.starttls()
         server.login(GMAIL_ADDRESS, GMAIL_APP_PASSWORD)
         server.sendmail(GMAIL_ADDRESS, destinataire, msg.as_string())
 
