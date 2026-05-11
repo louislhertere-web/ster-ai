@@ -1,4 +1,3 @@
-cat > ~/Desktop/ster_ia/backend/main.py << 'ENDOFFILE'
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import anthropic
@@ -68,28 +67,28 @@ def lire_pdf(service, file_id):
     return texte
 
 def analyser_paire(id_match, rapport_arbitre, rapport_delegue):
-    prompt = f"""Tu es un expert disciplinaire de la Fédération Française de Football.
+    prompt = f"""Tu es un expert disciplinaire de la Federation Francaise de Football.
 
-Analyse ces deux rapports du même match et classe le dossier.
+Analyse ces deux rapports du meme match et classe le dossier.
 
 ID Match : {id_match}
 
 RAPPORT ARBITRE :
 {rapport_arbitre[:2000]}
 
-RAPPORT DÉLÉGUÉ :
+RAPPORT DELEGUE :
 {rapport_delegue[:2000]}
 
-Réponds UNIQUEMENT en JSON avec ce format exact :
+Reponds UNIQUEMENT en JSON avec ce format exact :
 {{
-  "match": "Équipe A vs Équipe B (extrait des rapports)",
+  "match": "Equipe A vs Equipe B (extrait des rapports)",
   "priorite": "rouge" ou "jaune" ou "vert",
   "motif": "explication courte en une phrase",
   "action": "ce que le responsable doit faire"
 }}
 
-Règles :
-- ROUGE : brutalité, propos discriminatoires, pyrotechnique, envahissement terrain, incident grave
+Regles :
+- ROUGE : brutalite, propos discriminatoires, pyrotechnique, envahissement terrain, incident grave
 - JAUNE : expulsion technique, contradiction entre rapports, rapport manquant, tension sans incident
 - VERT : avertissements simples, RAS, match sans incident"""
 
@@ -108,9 +107,9 @@ def envoyer_email(destinataire, resultats):
     vert = [r for r in resultats if r['priorite'] == 'vert']
 
     doc = Document()
-    doc.add_heading('Ster-AI — Récapitulatif hebdomadaire', 0)
-    doc.add_paragraph(f'Analyse automatique des rapports arbitres et délégués — {date.today().strftime("%d/%m/%Y")}')
-    doc.add_paragraph(f'Total : {len(rouge)} prioritaire(s) | {len(jaune)} à vérifier | {len(vert)} RAS')
+    doc.add_heading('Ster-AI - Recapitulatif hebdomadaire', 0)
+    doc.add_paragraph(f'Analyse automatique des rapports arbitres et delegues - {date.today().strftime("%d/%m/%Y")}')
+    doc.add_paragraph(f'Total : {len(rouge)} prioritaire(s) | {len(jaune)} a verifier | {len(vert)} RAS')
     doc.add_paragraph('')
 
     if rouge:
@@ -142,11 +141,10 @@ def envoyer_email(destinataire, resultats):
 
     html = f"""
     <html><body style="font-family: Arial; padding: 20px;">
-    <h1 style="color: #1a1a2e;">Ster-AI — Récapitulatif hebdomadaire</h1>
-    <p style="color: #444; margin: 16px 0;">Bonjour,</p>
-    <p style="color: #444; margin: 16px 0;">Veuillez trouver ci-dessous le récapitulatif automatique de la journée du {date.today().strftime("%d/%m/%Y")}.</p>
-    <p style="color: #444; margin: 16px 0;">Bien à vous,</p>
-
+    <h1 style="color: #1a1a2e;">Ster-AI - Recapitulatif hebdomadaire</h1>
+    <p>Bonjour,</p>
+    <p>Veuillez trouver ci-dessous le recapitulatif automatique de la journee du {date.today().strftime("%d/%m/%Y")}.</p>
+    <p>Bien a vous,</p>
     <div style="display: flex; gap: 20px; margin: 20px 0;">
         <div style="background: #fff5f5; padding: 15px; border-radius: 8px; text-align: center;">
             <div style="font-size: 32px; font-weight: bold; color: #e53e3e;">{len(rouge)}</div>
@@ -154,23 +152,21 @@ def envoyer_email(destinataire, resultats):
         </div>
         <div style="background: #fffff0; padding: 15px; border-radius: 8px; text-align: center;">
             <div style="font-size: 32px; font-weight: bold; color: #d69e2e;">{len(jaune)}</div>
-            <div>À VÉRIFIER</div>
+            <div>A VERIFIER</div>
         </div>
         <div style="background: #f0fff4; padding: 15px; border-radius: 8px; text-align: center;">
             <div style="font-size: 32px; font-weight: bold; color: #38a169;">{len(vert)}</div>
             <div>RAS</div>
         </div>
     </div>
-
-    {"".join([f'<div style="background: #fff5f5; border: 1px solid #fc8181; border-radius: 8px; padding: 15px; margin: 10px 0;"><span style="background: #e53e3e; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">PRIORITAIRE</span><h3 style="margin: 8px 0;">{r["match"]}</h3><p>{r["motif"]}</p><p style="color: #666; font-style: italic;">Action : {r["action"]}</p></div>' for r in rouge])}
-    {"".join([f'<div style="background: #fffff0; border: 1px solid #f6e05e; border-radius: 8px; padding: 15px; margin: 10px 0;"><span style="background: #d69e2e; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">À VÉRIFIER</span><h3 style="margin: 8px 0;">{r["match"]}</h3><p>{r["motif"]}</p><p style="color: #666; font-style: italic;">Action : {r["action"]}</p></div>' for r in jaune])}
-    {"".join([f'<div style="background: #f0fff4; border: 1px solid #68d391; border-radius: 8px; padding: 15px; margin: 10px 0;"><span style="background: #38a169; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">RAS</span><h3 style="margin: 8px 0;">{r["match"]}</h3><p>{r["motif"]}</p></div>' for r in vert])}
-
+    {"".join([f'<div style="background: #fff5f5; border: 1px solid #fc8181; border-radius: 8px; padding: 15px; margin: 10px 0;"><h3>{r["match"]}</h3><p>{r["motif"]}</p><p>Action : {r["action"]}</p></div>' for r in rouge])}
+    {"".join([f'<div style="background: #fffff0; border: 1px solid #f6e05e; border-radius: 8px; padding: 15px; margin: 10px 0;"><h3>{r["match"]}</h3><p>{r["motif"]}</p><p>Action : {r["action"]}</p></div>' for r in jaune])}
+    {"".join([f'<div style="background: #f0fff4; border: 1px solid #68d391; border-radius: 8px; padding: 15px; margin: 10px 0;"><h3>{r["match"]}</h3><p>{r["motif"]}</p></div>' for r in vert])}
     </body></html>
     """
 
     msg = MIMEMultipart('mixed')
-    msg['Subject'] = f"Ster-AI — {len(rouge)} prioritaire(s), {len(jaune)} à vérifier, {len(vert)} RAS"
+    msg['Subject'] = f"Ster-AI - {len(rouge)} prioritaire(s), {len(jaune)} a verifier, {len(vert)} RAS"
     msg['From'] = GMAIL_ADDRESS
     msg['To'] = destinataire
     msg.attach(MIMEText(html, 'html'))
@@ -257,7 +253,7 @@ def analyser_tous_rapports():
             if not rapport_arbitre:
                 rapport_arbitre = "Rapport arbitre non disponible"
             if not rapport_delegue:
-                rapport_delegue = "Rapport délégué non disponible"
+                rapport_delegue = "Rapport delegue non disponible"
 
             analyse = analyser_paire(id_match, rapport_arbitre, rapport_delegue)
             analyse['fichier'] = fichier_nom
@@ -272,19 +268,19 @@ def analyser_tous_rapports():
 def envoyer_recap(req: RecapRequest):
     try:
         envoyer_email(req.destinataire, req.resultats)
-        return {"message": f"Email envoyé à {req.destinataire}", "total": len(req.resultats)}
+        return {"message": f"Email envoye a {req.destinataire}", "total": len(req.resultats)}
     except Exception as e:
         return {"error": str(e)}
 
 @app.post("/analyser")
 def analyser_rapport(req: RapportRequest):
-    prompt = f"""Tu es un expert disciplinaire de la Fédération Française de Football.
+    prompt = f"""Tu es un expert disciplinaire de la Federation Francaise de Football.
 
 Match : {req.match}
 Rapport arbitre : {req.rapport_arbitre}
-Rapport délégué : {req.rapport_delegue}
+Rapport delegue : {req.rapport_delegue}
 
-Réponds UNIQUEMENT en JSON :
+Reponds UNIQUEMENT en JSON :
 {{"priorite": "rouge/jaune/vert", "motif": "...", "action": "..."}}"""
 
     message = client.messages.create(
@@ -295,4 +291,3 @@ Réponds UNIQUEMENT en JSON :
     texte = message.content[0].text
     json_match = re.search(r'\{.*\}', texte, re.DOTALL)
     return json.loads(json_match.group())
-ENDOFFILE
