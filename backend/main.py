@@ -62,30 +62,45 @@ def lire_pdf(service, file_id):
     return texte
 
 def analyser_paire(id_match, rapport_arbitre, rapport_delegue):
-    prompt = f"""Tu es un expert disciplinaire de la Federation Francaise de Football.
+    prompt = f"""Tu es un assistant expert en discipline sportive pour la Direction des Competitions Nationales de la FFF (championnats N1, N2, N3).
 
-Analyse ces deux rapports du meme match et classe le dossier.
+Tu analyses deux rapports officiels d'un meme match : le rapport de l'arbitre central (RA_AC) et le rapport du delegue (RA_DP). Ton role est d'aider le responsable DCN a identifier rapidement les dossiers qui necessitent son attention.
 
 ID Match : {id_match}
 
-RAPPORT ARBITRE :
-{rapport_arbitre[:2000]}
+RAPPORT ARBITRE (RA_AC) :
+{rapport_arbitre[:3000]}
 
-RAPPORT DELEGUE :
-{rapport_delegue[:2000]}
+RAPPORT DELEGUE (RA_DP) :
+{rapport_delegue[:3000]}
+
+CLASSIFICATION :
+
+ROUGE — A traiter en priorite. Utilise ROUGE uniquement si le rapport mentionne explicitement l'un de ces faits :
+- Violence physique (coup, agression, crachat) sur un joueur, officiel ou spectateur
+- Propos discriminatoires ou racistes (origine, religion, orientation sexuelle)
+- Utilisation d'articles pyrotechniques (fumigenes, feux de bengale, petards)
+- Envahissement du terrain par des supporters ou dirigeants
+- Interruption ou arret definitif du match pour incident grave
+- Menaces ou voies de fait sur l'arbitre ou ses assistants
+- Comportement violent d'un dirigeant ou educateur
+- Jet de projectiles
+
+VERT — Aucune action requise. Utilise VERT si le match s'est deroule sans incident notable, avec seulement des avertissements ou expulsions techniques (double avertissement, faute grossiere sans violence) correctement documentees dans les deux rapports, et sans contradiction entre les deux officiels.
+
+JAUNE — A verifier. Utilise JAUNE UNIQUEMENT dans ces deux cas :
+- Un seul rapport est disponible (arbitre ou delegue manquant) et les informations sont insuffisantes pour conclure
+- Les deux rapports sont presents mais se contredisent sur un fait important (score, identite d'un joueur exclu, circonstances d'un incident)
+
+Si les faits sont clairs et documentes dans les deux rapports, classe en ROUGE ou VERT selon leur nature. Ne classe pas en JAUNE par precaution ou doute mineur.
 
 Reponds UNIQUEMENT en JSON avec ce format exact :
 {{
-  "match": "Equipe A vs Equipe B (extrait des rapports)",
+  "match": "Nom equipe domicile vs Nom equipe visiteur (date si disponible)",
   "priorite": "rouge" ou "jaune" ou "vert",
-  "motif": "explication courte en une phrase",
-  "action": "ce que le responsable doit faire"
-}}
-
-Regles :
-- ROUGE : brutalite, propos discriminatoires, pyrotechnique, envahissement terrain, incident grave
-- JAUNE : expulsion technique, contradiction entre rapports, rapport manquant, tension sans incident
-- VERT : avertissements simples, RAS, match sans incident"""
+  "motif": "fait precis constate dans le rapport, en une phrase courte",
+  "action": "ce que le responsable DCN doit faire concretement"
+}}"""
 
     message = client.messages.create(
         model="claude-haiku-4-5-20251001",
