@@ -4,12 +4,8 @@ import anthropic
 import os
 import json
 import re
-import smtplib
 import base64
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.mime.base import MIMEBase
-from email import encoders
+import requests
 from dotenv import load_dotenv
 from googleapiclient.discovery import build
 from google.oauth2 import service_account
@@ -39,8 +35,7 @@ client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
 CREDENTIALS_FILE = os.path.join(os.path.dirname(__file__), 'credentials.json')
 FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID")
-GMAIL_ADDRESS = os.getenv("GMAIL_ADDRESS")
-GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")
+RESEND_API_KEY = os.getenv("RESEND_API_KEY")
 
 def get_drive_service():
     creds_b64 = os.getenv("GOOGLE_CREDENTIALS_BASE64")
@@ -139,6 +134,11 @@ def envoyer_email(destinataire, resultats):
     doc.save(tmp.name)
     tmp.close()
 
+    with open(tmp.name, 'rb') as f:
+        docx_b64 = base64.b64encode(f.read()).decode('utf-8')
+
+    os.remove(tmp.name)
+
     html = f"""
     <html><body style="font-family: Arial; padding: 20px;">
     <h1 style="color: #1a1a2e;">Ster-AI - Recapitulatif hebdomadaire</h1>
@@ -165,25 +165,30 @@ def envoyer_email(destinataire, resultats):
     </body></html>
     """
 
-    msg = MIMEMultipart('mixed')
-    msg['Subject'] = f"Ster-AI - {len(rouge)} prioritaire(s), {len(jaune)} a verifier, {len(vert)} RAS"
-    msg['From'] = GMAIL_ADDRESS
-    msg['To'] = destinataire
-    msg.attach(MIMEText(html, 'html'))
+    payload = {
+        "from": "Ster-AI <onboarding@resend.dev>",
+        "to": [destinataire],
+        "subject": f"Ster-AI - {len(rouge)} prioritaire(s), {len(jaune)} a verifier, {len(vert)} RAS",
+        "html": html,
+        "attachments": [
+            {
+                "filename": f"Recap_SterAI_{date.today().strftime('%d%m%Y')}.docx",
+                "content": docx_b64
+            }
+        ]
+    }
 
-    with open(tmp.name, 'rb') as f:
-        part = MIMEBase('application', 'octet-stream')
-        part.set_payload(f.read())
-        encoders.encode_base64(part)
-        part.add_header('Content-Disposition', f'attachment; filename="Recap_SterAI_{date.today().strftime("%d%m%Y")}.docx"')
-        msg.attach(part)
+    response = requests.post(
+        "https://api.resend.com/emails",
+        headers={
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json"
+        },
+        json=payload
+    )
 
-    with smtplib.SMTP('smtp.gmail.com', 587) as server:
-        server.starttls()
-        server.login(GMAIL_ADDRESS, GMAIL_APP_PASSWORD)
-        server.sendmail(GMAIL_ADDRESS, destinataire, msg.as_string())
-
-    os.remove(tmp.name)
+    if response.status_code != 200:
+        raise Exception(f"Resend erreur {response.status_code} : {response.text}")
 
 class RapportRequest(BaseModel):
     match: str
