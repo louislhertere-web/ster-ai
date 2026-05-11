@@ -1,3 +1,4 @@
+cat > ~/Desktop/ster_ia/backend/main.py << 'ENDOFFILE'
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import anthropic
@@ -17,6 +18,7 @@ import io
 from googleapiclient.http import MediaIoBaseDownload
 import PyPDF2
 from pydantic import BaseModel
+from typing import List
 from docx import Document
 import tempfile
 from datetime import date
@@ -191,6 +193,10 @@ class RapportRequest(BaseModel):
     rapport_arbitre: str
     rapport_delegue: str
 
+class RecapRequest(BaseModel):
+    destinataire: str
+    resultats: List[dict]
+
 @app.get("/")
 def read_root():
     return {"message": "Ster-AI API en ligne", "status": "ok"}
@@ -262,14 +268,11 @@ def analyser_tous_rapports():
     except Exception as e:
         return {"error": str(e)}
 
-@app.get("/envoyer-recap")
-def envoyer_recap(destinataire: str):
+@app.post("/envoyer-recap")
+def envoyer_recap(req: RecapRequest):
     try:
-        data = analyser_tous_rapports()
-        if "error" in data:
-            return {"error": data["error"]}
-        envoyer_email(destinataire, data["resultats"])
-        return {"message": f"Email envoyé à {destinataire}", "total": data["total"]}
+        envoyer_email(req.destinataire, req.resultats)
+        return {"message": f"Email envoyé à {req.destinataire}", "total": len(req.resultats)}
     except Exception as e:
         return {"error": str(e)}
 
@@ -292,3 +295,4 @@ Réponds UNIQUEMENT en JSON :
     texte = message.content[0].text
     json_match = re.search(r'\{.*\}', texte, re.DOTALL)
     return json.loads(json_match.group())
+ENDOFFILE

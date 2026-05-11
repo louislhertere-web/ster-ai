@@ -1,3 +1,4 @@
+cat > ~/Desktop/ster_ia/frontend/src/App.js << 'ENDOFFILE'
 import React, { useState, useEffect } from 'react';
 import Login from './Login';
 
@@ -404,7 +405,14 @@ function Dashboard({ utilisateur, onLogout }) {
 
   const envoyerRecap = () => {
     setEnvoi(true);
-    fetch(`https://ster-ai-production.up.railway.app/envoyer-recap?destinataire=louislhertere@gmail.com`)
+    fetch('https://ster-ai-production.up.railway.app/envoyer-recap', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        destinataire: 'louislhertere@gmail.com',
+        resultats: resultats
+      })
+    })
       .then(res => res.json())
       .then(() => { showToast('Récap envoyé par email ✓'); setEnvoi(false); })
       .catch(() => { showToast("Erreur lors de l'envoi"); setEnvoi(false); });
@@ -596,3 +604,4 @@ function App() {
 }
 
 export default App;
+ENDOFFILE
