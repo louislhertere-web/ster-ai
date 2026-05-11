@@ -38,6 +38,11 @@ FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID")
 RESEND_API_KEY = os.getenv("RESEND_API_KEY")
 
 COMPETITIONS = ["N1", "N2", "N3"]
+JOURNEES = {
+    "N1": [f"J{i}" for i in range(1, 35)],
+    "N2": [f"J{i}" for i in range(1, 27)],
+    "N3": [f"J{i}" for i in range(1, 27)]
+}
 
 def get_drive_service():
     creds_b64 = os.getenv("GOOGLE_CREDENTIALS_BASE64")
@@ -68,10 +73,9 @@ def get_structure(service):
     for comp in COMPETITIONS:
         comp_id = get_or_create_folder(service, comp, FOLDER_ID)
         structure[comp] = {'id': comp_id, 'journees': {}}
-        query = f"'{comp_id}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false"
-        results = service.files().list(q=query, fields="files(id, name)").execute()
-        for folder in results.get('files', []):
-            structure[comp]['journees'][folder['name']] = folder['id']
+        for journee in JOURNEES[comp]:
+            journee_id = get_or_create_folder(service, journee, comp_id)
+            structure[comp]['journees'][journee] = journee_id
     return structure
 
 def lire_pdf(service, file_id):
