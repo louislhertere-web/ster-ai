@@ -52,7 +52,86 @@
       text-decoration: none !important;
     }
 
-    .btn-nav-mobile { display: none; }
+    .nav-mobile { display: none; align-items: center; gap: 10px; }
+
+    .btn-hamburger {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 5px;
+      width: 32px;
+      height: 32px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    .btn-hamburger span {
+      display: block;
+      width: 20px;
+      height: 1.5px;
+      background: #111;
+      transition: all 0.2s;
+    }
+
+    .btn-hamburger.open span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
+    .btn-hamburger.open span:nth-child(2) { opacity: 0; }
+    .btn-hamburger.open span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
+
+    .mobile-menu {
+      display: none;
+      flex-direction: column;
+      background: #fff;
+      border-bottom: 0.5px solid #e8e8e8;
+      padding: 12px 20px 20px;
+      gap: 4px;
+    }
+
+    .mobile-menu.open { display: flex; }
+
+    .mobile-menu a {
+      font-size: 14px;
+      color: #444;
+      text-decoration: none;
+      padding: 10px 0;
+      border-bottom: 0.5px solid #f0f0f0;
+    }
+
+    .mobile-menu a:last-child { border-bottom: none; }
+
+    .mobile-menu-btns {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .btn-mobile-acceder {
+      font-size: 13px;
+      padding: 10px 18px;
+      border-radius: 8px;
+      border: 0.5px solid #e8e8e8;
+      background: #f7f7f7;
+      color: #111 !important;
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+      text-decoration: none !important;
+      text-align: center;
+    }
+
+    .btn-mobile-demo {
+      font-size: 13px;
+      padding: 10px 18px;
+      border-radius: 8px;
+      border: 2px solid #3D4AB8;
+      background: #5E6AD2;
+      color: #ffffff !important;
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      text-decoration: none !important;
+      text-align: center;
+    }
 
     .hero {
       padding: 96px 48px 88px;
@@ -264,18 +343,7 @@
     @media (max-width: 640px) {
       nav { padding: 14px 20px; }
       .nav-links { display: none; }
-      .btn-nav-mobile {
-        display: inline-block;
-        font-size: 12px;
-        padding: 7px 14px;
-        border-radius: 8px;
-        border: none;
-        background: #5E6AD2;
-        color: #ffffff !important;
-        font-family: 'Inter', sans-serif;
-        font-weight: 600;
-        text-decoration: none !important;
-      }
+      .nav-mobile { display: flex; }
       .hero { padding: 48px 20px; }
       .hero h1 { font-size: 30px; letter-spacing: -0.8px; }
       .hero p { font-size: 15px; }
@@ -303,8 +371,24 @@
       <a class="btn-nav-acceder" href="https://ster-ai.vercel.app" target="_blank">Acceder</a>
       <a class="btn-nav" href="mailto:contact@ster-ai.com">Demander une demo</a>
     </div>
-    <a class="btn-nav-mobile" href="mailto:contact@ster-ai.com">Demo</a>
+    <div class="nav-mobile">
+      <button class="btn-hamburger" id="hamburger" onclick="toggleMenu()">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
   </nav>
+
+  <div class="mobile-menu" id="mobileMenu">
+    <a href="#cas-usage" onclick="closeMenu()">Cas d'usage</a>
+    <a href="#offres" onclick="closeMenu()">Offres</a>
+    <a href="#contact" onclick="closeMenu()">Contact</a>
+    <div class="mobile-menu-btns">
+      <a class="btn-mobile-acceder" href="https://ster-ai.vercel.app" target="_blank">Acceder</a>
+      <a class="btn-mobile-demo" href="mailto:contact@ster-ai.com">Demander une demo</a>
+    </div>
+  </div>
 
   <div class="hero">
     <div class="hero-badge">Propulse par l'IA</div>
@@ -392,6 +476,22 @@
       <div class="footer-copy">2026 Ster-AI</div>
     </div>
   </footer>
+
+  <script>
+    function toggleMenu() {
+      const menu = document.getElementById('mobileMenu');
+      const btn = document.getElementById('hamburger');
+      menu.classList.toggle('open');
+      btn.classList.toggle('open');
+    }
+
+    function closeMenu() {
+      const menu = document.getElementById('mobileMenu');
+      const btn = document.getElementById('hamburger');
+      menu.classList.remove('open');
+      btn.classList.remove('open');
+    }
+  </script>
 
 </body>
 </html>
