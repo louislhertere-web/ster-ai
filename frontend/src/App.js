@@ -288,6 +288,7 @@ const STYLES = `
   .si-red { background: #FEE2E2; color: #B91C1C; border: 1.5px solid #F87171; }
   .si-amber { background: #FEF3C7; color: #92400E; border: 1.5px solid #FCD34D; }
   .si-green { background: #DCFCE7; color: #166534; border: 1.5px solid #4ADE80; }
+  .si-gray { background: #F3F4F6; color: #6B7280; border: 1.5px solid #D1D5DB; }
 
   .row-title {
     font-size: 13px;
@@ -320,6 +321,7 @@ const STYLES = `
   .tag-red { background: #FEE2E2; color: #B91C1C; }
   .tag-amber { background: #FEF3C7; color: #92400E; }
   .tag-green { background: #DCFCE7; color: #166534; }
+  .tag-gray { background: #F3F4F6; color: #6B7280; }
 
   .row-action {
     font-size: 11px;
@@ -421,6 +423,7 @@ function Dashboard({ utilisateur, onLogout }) {
   const nbRouge = resultats.filter(m => m.priorite === "rouge").length;
   const nbJaune = resultats.filter(m => m.priorite === "jaune").length;
   const nbVert = resultats.filter(m => m.priorite === "vert").length;
+  const nbGris = resultats.filter(m => m.priorite === "gris").length;
 
   const initiales = utilisateur.nom
     ? utilisateur.nom.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -460,6 +463,10 @@ function Dashboard({ utilisateur, onLogout }) {
               <span>RAS</span>
               {!loading && <span className="nav-count">{nbVert}</span>}
             </div>
+            <div className={`nav-item ${filtre === 'gris' ? 'active' : ''}`} onClick={() => setFiltre('gris')}>
+              <span>Rapport manquant</span>
+              {!loading && <span className="nav-count">{nbGris}</span>}
+            </div>
           </div>
 
           <div className="sidebar-section" style={{ marginTop: '8px' }}>
@@ -484,13 +491,13 @@ function Dashboard({ utilisateur, onLogout }) {
           <div className="topbar">
             <div className="page-title">Rapports - Semaine {getWeekNumber()}</div>
             <div className="filter-pills">
-              {['tous', 'rouge', 'jaune', 'vert'].map(f => (
+              {['tous', 'rouge', 'jaune', 'vert', 'gris'].map(f => (
                 <button
                   key={f}
                   className={`pill ${filtre === f ? 'active' : ''}`}
                   onClick={() => setFiltre(f)}
                 >
-                  {f === 'tous' ? 'Tous' : f === 'rouge' ? 'Prioritaire' : f === 'jaune' ? 'A verifier' : 'RAS'}
+                  {f === 'tous' ? 'Tous' : f === 'rouge' ? 'Prioritaire' : f === 'jaune' ? 'A verifier' : f === 'vert' ? 'RAS' : 'Manquant'}
                 </button>
               ))}
             </div>
@@ -520,6 +527,13 @@ function Dashboard({ utilisateur, onLogout }) {
                 <div>
                   <div className="stat-num" style={{ color: '#166534' }}>{nbVert}</div>
                   <div className="stat-lbl">RAS</div>
+                </div>
+              </div>
+              <div className="stat-item" onClick={() => setFiltre('gris')}>
+                <div className="stat-dot" style={{ background: '#9CA3AF' }} />
+                <div>
+                  <div className="stat-num" style={{ color: '#6B7280' }}>{nbGris}</div>
+                  <div className="stat-lbl">Manquant</div>
                 </div>
               </div>
               <div className="stat-item" onClick={() => setFiltre('tous')}>
@@ -562,11 +576,11 @@ function Dashboard({ utilisateur, onLogout }) {
                 )}
 
                 {matchsFiltres.map((m, i) => {
-                  const priorite = m.priorite || 'jaune';
-                  const tagClass = priorite === 'rouge' ? 'tag-red' : priorite === 'vert' ? 'tag-green' : 'tag-amber';
-                  const siClass = priorite === 'rouge' ? 'si-red' : priorite === 'vert' ? 'si-green' : 'si-amber';
-                  const label = priorite === 'rouge' ? 'Prioritaire' : priorite === 'vert' ? 'RAS' : 'A verifier';
-                  const icon = priorite === 'rouge' ? '!' : priorite === 'vert' ? 'v' : '~';
+                  const priorite = m.priorite || 'gris';
+                  const tagClass = priorite === 'rouge' ? 'tag-red' : priorite === 'vert' ? 'tag-green' : priorite === 'gris' ? 'tag-gray' : 'tag-amber';
+                  const siClass = priorite === 'rouge' ? 'si-red' : priorite === 'vert' ? 'si-green' : priorite === 'gris' ? 'si-gray' : 'si-amber';
+                  const label = priorite === 'rouge' ? 'Prioritaire' : priorite === 'vert' ? 'RAS' : priorite === 'gris' ? 'Manquant' : 'A verifier';
+                  const icon = priorite === 'rouge' ? '!' : priorite === 'vert' ? 'v' : priorite === 'gris' ? '?' : '~';
 
                   return (
                     <div key={i} className="row">

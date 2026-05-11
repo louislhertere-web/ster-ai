@@ -62,6 +62,19 @@ def lire_pdf(service, file_id):
     return texte
 
 def analyser_paire(id_match, rapport_arbitre, rapport_delegue):
+
+    arbitre_manquant = rapport_arbitre == "Rapport arbitre non disponible"
+    delegue_manquant = rapport_delegue == "Rapport delegue non disponible"
+
+    if arbitre_manquant or delegue_manquant:
+        manquant = "arbitre" if arbitre_manquant else "delegue"
+        return {
+            "match": f"Match {id_match}",
+            "priorite": "gris",
+            "motif": f"Rapport {manquant} non disponible",
+            "action": f"Relancer l'officiel {manquant} pour obtenir son rapport"
+        }
+
     prompt = f"""Tu es un assistant expert en discipline sportive pour la Direction des Competitions Nationales de la FFF (championnats N1, N2, N3).
 
 Tu analyses deux rapports officiels d'un meme match : le rapport de l'arbitre central (RA_AC) et le rapport du delegue (RA_DP). Ton role est d'aider le responsable DCN a identifier rapidement les dossiers qui necessitent son attention.
@@ -89,12 +102,11 @@ ROUGE — A traiter en priorite. Utilise ROUGE uniquement si le rapport mentionn
 VERT — Aucune action requise. Utilise VERT dans tous ces cas :
 - Match sans incident notable
 - Avertissements (cartons jaunes) simples, meme en grand nombre, meme s'il y a une contradiction mineure entre les deux rapports sur le nombre ou l'identite des joueurs avertis
-- Expulsion par double avertissement (double carton jaune) : classe en VERT en precisantdans le motif "Expulsion par double avertissement de [NOM DU JOUEUR]"
+- Expulsion par double avertissement (double carton jaune) : classe en VERT en precisant dans le motif "Expulsion par double avertissement de [NOM DU JOUEUR]"
 - Expulsion pour faute grossiere sans violence caracterisee
 - Toute contradiction entre les deux rapports portant uniquement sur des cartons jaunes
 
-JAUNE — A verifier. Utilise JAUNE UNIQUEMENT dans ces deux cas :
-- Un seul rapport est disponible (arbitre ou delegue manquant) et les informations sont insuffisantes pour conclure
+JAUNE — A verifier. Utilise JAUNE UNIQUEMENT dans ces cas :
 - Les deux rapports sont presents mais se contredisent sur un fait important autre que les cartons jaunes : score final, identite du joueur exclu pour faute grave, circonstances d'un incident serieux
 
 Ne classe jamais en JAUNE pour une contradiction sur des cartons jaunes. Ne classe pas en JAUNE par precaution ou doute mineur.
@@ -120,11 +132,12 @@ def envoyer_email(destinataire, resultats):
     rouge = [r for r in resultats if r['priorite'] == 'rouge']
     jaune = [r for r in resultats if r['priorite'] == 'jaune']
     vert = [r for r in resultats if r['priorite'] == 'vert']
+    gris = [r for r in resultats if r['priorite'] == 'gris']
 
     doc = Document()
     doc.add_heading('Ster-AI - Recapitulatif hebdomadaire', 0)
     doc.add_paragraph(f'Analyse automatique des rapports arbitres et delegues - {date.today().strftime("%d/%m/%Y")}')
-    doc.add_paragraph(f'Total : {len(rouge)} prioritaire(s) | {len(jaune)} a verifier | {len(vert)} RAS')
+    doc.add_paragraph(f'Total : {len(rouge)} prioritaire(s) | {len(jaune)} a verifier | {len(vert)} RAS | {len(gris)} rapport(s) manquant(s)')
     doc.add_paragraph('')
 
     if rouge:
@@ -138,6 +151,14 @@ def envoyer_email(destinataire, resultats):
     if jaune:
         doc.add_heading('A VERIFIER', level=1)
         for r in jaune:
+            doc.add_heading(r['match'], level=2)
+            doc.add_paragraph(f'Motif : {r["motif"]}')
+            doc.add_paragraph(f'Action : {r["action"]}')
+            doc.add_paragraph('')
+
+    if gris:
+        doc.add_heading('RAPPORTS MANQUANTS', level=1)
+        for r in gris:
             doc.add_heading(r['match'], level=2)
             doc.add_paragraph(f'Motif : {r["motif"]}')
             doc.add_paragraph(f'Action : {r["action"]}')
@@ -178,9 +199,14 @@ def envoyer_email(destinataire, resultats):
             <div style="font-size: 32px; font-weight: bold; color: #38a169;">{len(vert)}</div>
             <div>RAS</div>
         </div>
+        <div style="background: #f7f7f7; padding: 15px; border-radius: 8px; text-align: center;">
+            <div style="font-size: 32px; font-weight: bold; color: #6B7280;">{len(gris)}</div>
+            <div>MANQUANTS</div>
+        </div>
     </div>
     {"".join([f'<div style="background: #fff5f5; border: 1px solid #fc8181; border-radius: 8px; padding: 15px; margin: 10px 0;"><h3>{r["match"]}</h3><p>{r["motif"]}</p><p>Action : {r["action"]}</p></div>' for r in rouge])}
     {"".join([f'<div style="background: #fffff0; border: 1px solid #f6e05e; border-radius: 8px; padding: 15px; margin: 10px 0;"><h3>{r["match"]}</h3><p>{r["motif"]}</p><p>Action : {r["action"]}</p></div>' for r in jaune])}
+    {"".join([f'<div style="background: #f7f7f7; border: 1px solid #D1D5DB; border-radius: 8px; padding: 15px; margin: 10px 0;"><h3>{r["match"]}</h3><p>{r["motif"]}</p><p>Action : {r["action"]}</p></div>' for r in gris])}
     {"".join([f'<div style="background: #f0fff4; border: 1px solid #68d391; border-radius: 8px; padding: 15px; margin: 10px 0;"><h3>{r["match"]}</h3><p>{r["motif"]}</p></div>' for r in vert])}
     </body></html>
     """
@@ -188,7 +214,7 @@ def envoyer_email(destinataire, resultats):
     payload = {
         "from": "Ster-AI <onboarding@resend.dev>",
         "to": [destinataire],
-        "subject": f"Ster-AI - {len(rouge)} prioritaire(s), {len(jaune)} a verifier, {len(vert)} RAS",
+        "subject": f"Ster-AI - {len(rouge)} prioritaire(s), {len(jaune)} a verifier, {len(gris)} manquant(s), {len(vert)} RAS",
         "html": html,
         "attachments": [
             {
