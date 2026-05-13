@@ -329,7 +329,7 @@ def envoyer_email(destinataire, resultats, competition=None, journee=None):
     """
 
     payload = {
-        "from": "Ster-AI <onboarding@resend.dev>",
+        "from": "Ster-AI <contact@ster-ai.com>",
         "to": [destinataire],
         "subject": f"Ster-AI - {contexte} - {len(rouge)} prioritaire(s), {len(jaune)} a verifier, {len(gris)} manquant(s), {len(vert)} RAS",
         "html": html,
