@@ -424,6 +424,12 @@ const STYLES = `
   }
 `;
 
+const JOURNEES = {
+  N1: Array.from({ length: 34 }, (_, i) => `J${i + 1}`),
+  N2: Array.from({ length: 26 }, (_, i) => `J${i + 1}`),
+  N3: Array.from({ length: 26 }, (_, i) => `J${i + 1}`)
+};
+
 function Dashboard({ utilisateur, onLogout }) {
   const [resultats, setResultats] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -431,26 +437,10 @@ function Dashboard({ utilisateur, onLogout }) {
   const [erreur, setErreur] = useState(null);
   const [envoi, setEnvoi] = useState(false);
   const [toast, setToast] = useState(null);
-  const [structure, setStructure] = useState({});
   const [competition, setCompetition] = useState('');
   const [journee, setJournee] = useState('');
 
-  useEffect(() => {
-    fetch('https://ster-ai-production.up.railway.app/drive/structure')
-      .then(res => res.json())
-      .then(data => {
-        if (data.structure) setStructure(data.structure);
-      })
-      .catch(() => {});
-  }, []);
-
-  const journeesDisponibles = competition && structure[competition]
-    ? Object.keys(structure[competition].journees).sort((a, b) => {
-        const na = parseInt(a.replace(/\D/g, '')) || 0;
-        const nb = parseInt(b.replace(/\D/g, '')) || 0;
-        return na - nb;
-      })
-    : [];
+  const journeesDisponibles = competition ? JOURNEES[competition] : [];
 
   const lancerAnalyse = () => {
     setLoading(true);
@@ -506,7 +496,9 @@ function Dashboard({ utilisateur, onLogout }) {
 
   const titreAnalyse = competition && journee
     ? `${competition} - ${journee}`
-    : 'Tous les rapports';
+    : competition
+    ? competition
+    : 'Rapports';
 
   return (
     <>
@@ -593,10 +585,10 @@ function Dashboard({ utilisateur, onLogout }) {
             </select>
             <span className="selector-label">Journee</span>
             <select className="select-input" value={journee} onChange={e => { setJournee(e.target.value); setResultats([]); }} disabled={!competition}>
-              <option value="">Toutes</option>
+              <option value="">Selectionnez</option>
               {journeesDisponibles.map(j => <option key={j} value={j}>{j}</option>)}
             </select>
-            <button className="btn-analyser" onClick={lancerAnalyse} disabled={loading}>
+            <button className="btn-analyser" onClick={lancerAnalyse} disabled={loading || !competition || !journee}>
               {loading ? 'Analyse en cours...' : 'Lancer l\'analyse'}
             </button>
           </div>
