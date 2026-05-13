@@ -6,6 +6,8 @@ import json
 import re
 import base64
 import requests
+import threading
+import uuid
 from dotenv import load_dotenv
 from googleapiclient.discovery import build
 from google.oauth2 import service_account
@@ -43,6 +45,8 @@ JOURNEES = {
     "N2": [f"J{i}" for i in range(1, 27)],
     "N3": [f"J{i}" for i in range(1, 27)]
 }
+
+jobs = {}
 
 def get_drive_service():
     creds_b64 = os.getenv("GOOGLE_CREDENTIALS_BASE64")
@@ -177,6 +181,69 @@ Reponds UNIQUEMENT en JSON avec ce format exact :
     json_match = re.search(r'\{.*\}', texte, re.DOTALL)
     return json.loads(json_match.group())
 
+def run_analyse_job(job_id, competition, journee):
+    try:
+        jobs[job_id]['statut'] = 'en_cours'
+        service = get_drive_service()
+
+        if competition and journee:
+            structure = get_structure(service)
+            folder_id = structure[competition]['journees'][journee]
+        else:
+            folder_id = FOLDER_ID
+
+        results = service.files().list(
+            q=f"'{folder_id}' in parents and mimeType='application/pdf' and trashed=false",
+            fields="files(id, name, createdTime)",
+            pageSize=100
+        ).execute()
+        fichiers = results.get('files', [])
+
+        arbitres = {}
+        delegues = {}
+        for f in fichiers:
+            nom = f['name']
+            if 'RA_AC_' in nom:
+                id_match = nom.split('RA_AC_')[1].replace('.pdf', '')
+                arbitres[id_match] = f
+            elif 'RA_DP_' in nom:
+                id_match = nom.split('RA_DP_')[1].replace('.pdf', '')
+                delegues[id_match] = f
+
+        tous_ids = list(set(arbitres.keys()) | set(delegues.keys()))[:100]
+        jobs[job_id]['total'] = len(tous_ids)
+        resultats = []
+
+        for i, id_match in enumerate(tous_ids):
+            rapport_arbitre = ""
+            rapport_delegue = ""
+            fichier_nom = f"Match {id_match}"
+
+            if id_match in arbitres:
+                rapport_arbitre = lire_pdf(service, arbitres[id_match]['id'])
+                fichier_nom = arbitres[id_match]['name']
+            if id_match in delegues:
+                rapport_delegue = lire_pdf(service, delegues[id_match]['id'])
+
+            if not rapport_arbitre:
+                rapport_arbitre = "Rapport arbitre non disponible"
+            if not rapport_delegue:
+                rapport_delegue = "Rapport delegue non disponible"
+
+            analyse = analyser_paire(id_match, rapport_arbitre, rapport_delegue)
+            analyse['fichier'] = fichier_nom
+            analyse['id'] = id_match
+            resultats.append(analyse)
+            jobs[job_id]['progression'] = i + 1
+            jobs[job_id]['resultats'] = resultats
+
+        jobs[job_id]['statut'] = 'termine'
+        jobs[job_id]['resultats'] = resultats
+
+    except Exception as e:
+        jobs[job_id]['statut'] = 'erreur'
+        jobs[job_id]['erreur'] = str(e)
+
 def envoyer_email(destinataire, resultats, competition=None, journee=None):
     rouge = [r for r in resultats if r['priorite'] == 'rouge']
     jaune = [r for r in resultats if r['priorite'] == 'jaune']
@@ -297,6 +364,10 @@ class RecapRequest(BaseModel):
     competition: Optional[str] = None
     journee: Optional[str] = None
 
+class AnalyseRequest(BaseModel):
+    competition: Optional[str] = None
+    journee: Optional[str] = None
+
 @app.get("/")
 def read_root():
     return {"message": "Ster-AI API en ligne", "status": "ok"}
@@ -305,14 +376,35 @@ def read_root():
 def health_check():
     return {"status": "healthy"}
 
-@app.get("/drive/structure")
-def get_drive_structure():
-    try:
-        service = get_drive_service()
-        structure = get_structure(service)
-        return {"structure": structure}
-    except Exception as e:
-        return {"error": str(e)}
+@app.post("/analyser/lancer")
+def lancer_analyse(req: AnalyseRequest):
+    job_id = str(uuid.uuid4())
+    jobs[job_id] = {
+        "statut": "en_attente",
+        "progression": 0,
+        "total": 0,
+        "resultats": [],
+        "erreur": None,
+        "competition": req.competition,
+        "journee": req.journee
+    }
+    thread = threading.Thread(target=run_analyse_job, args=(job_id, req.competition, req.journee))
+    thread.daemon = True
+    thread.start()
+    return {"job_id": job_id}
+
+@app.get("/analyser/statut/{job_id}")
+def statut_analyse(job_id: str):
+    if job_id not in jobs:
+        return {"erreur": "Job introuvable"}
+    job = jobs[job_id]
+    return {
+        "statut": job["statut"],
+        "progression": job["progression"],
+        "total": job["total"],
+        "resultats": job["resultats"] if job["statut"] == "termine" else [],
+        "erreur": job["erreur"]
+    }
 
 @app.get("/drive/analyser-tout")
 def analyser_tous_rapports(competition: Optional[str] = None, journee: Optional[str] = None):

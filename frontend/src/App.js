@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Login from './Login';
 
 const STYLES = `
@@ -236,6 +236,18 @@ const STYLES = `
   .btn-analyser:hover { background: #eee; }
   .btn-analyser:disabled { opacity: 0.5; cursor: not-allowed; }
 
+  .progress-bar-container {
+    height: 3px;
+    background: #f0f0f0;
+    flex-shrink: 0;
+  }
+
+  .progress-bar {
+    height: 3px;
+    background: #5E6AD2;
+    transition: width 0.3s ease;
+  }
+
   .stats-bar {
     display: flex;
     padding: 14px 24px;
@@ -430,37 +442,72 @@ const JOURNEES = {
   N3: Array.from({ length: 26 }, (_, i) => `J${i + 1}`)
 };
 
+const API = 'https://ster-ai-production.up.railway.app';
+
 function Dashboard({ utilisateur, onLogout }) {
   const [resultats, setResultats] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [progression, setProgression] = useState(0);
+  const [total, setTotal] = useState(0);
   const [filtre, setFiltre] = useState("tous");
   const [erreur, setErreur] = useState(null);
   const [envoi, setEnvoi] = useState(false);
   const [toast, setToast] = useState(null);
   const [competition, setCompetition] = useState('');
   const [journee, setJournee] = useState('');
+  const pollRef = useRef(null);
 
   const journeesDisponibles = competition ? JOURNEES[competition] : [];
 
-  const lancerAnalyse = () => {
+  const lancerAnalyse = async () => {
     setLoading(true);
     setErreur(null);
     setResultats([]);
-    const params = competition && journee
-      ? `?competition=${competition}&journee=${encodeURIComponent(journee)}`
-      : '';
-    fetch(`https://ster-ai-production.up.railway.app/drive/analyser-tout${params}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.error) setErreur(data.error);
-        else setResultats(data.resultats);
-        setLoading(false);
-      })
-      .catch(() => {
-        setErreur("Impossible de contacter le backend");
-        setLoading(false);
+    setProgression(0);
+    setTotal(0);
+
+    try {
+      const res = await fetch(`${API}/analyser/lancer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ competition: competition || null, journee: journee || null })
       });
+      const data = await res.json();
+      const jobId = data.job_id;
+
+      pollRef.current = setInterval(async () => {
+        try {
+          const statusRes = await fetch(`${API}/analyser/statut/${jobId}`);
+          const status = await statusRes.json();
+
+          setProgression(status.progression);
+          setTotal(status.total);
+
+          if (status.statut === 'termine') {
+            clearInterval(pollRef.current);
+            setResultats(status.resultats);
+            setLoading(false);
+          } else if (status.statut === 'erreur') {
+            clearInterval(pollRef.current);
+            setErreur(status.erreur);
+            setLoading(false);
+          }
+        } catch {
+          clearInterval(pollRef.current);
+          setErreur("Impossible de contacter le backend");
+          setLoading(false);
+        }
+      }, 2000);
+
+    } catch {
+      setErreur("Impossible de contacter le backend");
+      setLoading(false);
+    }
   };
+
+  useEffect(() => {
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, []);
 
   const showToast = (msg) => {
     setToast(msg);
@@ -469,7 +516,7 @@ function Dashboard({ utilisateur, onLogout }) {
 
   const envoyerRecap = () => {
     setEnvoi(true);
-    fetch('https://ster-ai-production.up.railway.app/envoyer-recap', {
+    fetch(`${API}/envoyer-recap`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -496,9 +543,9 @@ function Dashboard({ utilisateur, onLogout }) {
 
   const titreAnalyse = competition && journee
     ? `${competition} - ${journee}`
-    : competition
-    ? competition
-    : 'Rapports';
+    : competition || 'Rapports';
+
+  const pourcentage = total > 0 ? Math.round((progression / total) * 100) : 0;
 
   return (
     <>
@@ -589,9 +636,15 @@ function Dashboard({ utilisateur, onLogout }) {
               {journeesDisponibles.map(j => <option key={j} value={j}>{j}</option>)}
             </select>
             <button className="btn-analyser" onClick={lancerAnalyse} disabled={loading || !competition || !journee}>
-              {loading ? 'Analyse en cours...' : 'Lancer l\'analyse'}
+              {loading ? `Analyse... ${pourcentage}%` : "Lancer l'analyse"}
             </button>
           </div>
+
+          {loading && (
+            <div className="progress-bar-container">
+              <div className="progress-bar" style={{ width: `${pourcentage}%` }} />
+            </div>
+          )}
 
           {resultats.length > 0 && !erreur && (
             <div className="stats-bar">
@@ -636,7 +689,7 @@ function Dashboard({ utilisateur, onLogout }) {
           <div className="list-container">
             {loading && (
               <div className="state-box">
-                <div className="state-title">Analyse en cours...</div>
+                <div className="state-title">Analyse en cours... {progression}/{total}</div>
                 <div className="state-sub">Claude lit les rapports depuis Google Drive</div>
               </div>
             )}
